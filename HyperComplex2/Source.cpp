@@ -24,13 +24,31 @@ typedef int32_t TINT;
 #define SPEEDTEST_TESTCOUNT() 10000000
 #define SPEEDTEST_PRIMEMIN() 1000
 #define SPEEDTEST_TESTROUNDS() 100   // it's best to do a lot of rounds so the CPU is running at full speed, giving good results
-#define SPEEDTEST_ENCODEDECODECOUNT() 50 // does an encode/decode every this many operations
+#define SPEEDTEST_ENCODEDECODECOUNT() 5 // does an encode/decode every this many operations
+
+//=================================================================
+TINT MultiplicativeInverse(TINT number, TINT prime);
 
 //=================================================================
 struct SPrimeInfo
 {
     TINT                m_prime;
     std::array<TINT, 2> m_imaginaries;
+
+    TINT                m_multInverse2;
+    TINT                m_multInverse2i;
+
+    void Calculate ()
+    {
+        m_multInverse2 = MultiplicativeInverse(2, m_prime);
+        m_multInverse2i = MultiplicativeInverse(2 * m_imaginaries[0], m_prime);
+
+        if (m_multInverse2 < 0)
+            m_multInverse2 += m_prime;
+
+        if (m_multInverse2i < 0)
+            m_multInverse2i += m_prime;
+    }
 };
 
 //=================================================================
@@ -199,21 +217,11 @@ SComplex IntermediateToComplex (const SIntermediate& intermediate, const SPrimeI
     // ___________
     //      2bi
 
-
-    TINT multInverse2 = MultiplicativeInverse(2, primeInfo.m_prime);
-    TINT multInverse2i = MultiplicativeInverse(2 * primeInfo.m_imaginaries[0], primeInfo.m_prime);
-
-    if (multInverse2 < 0)
-        multInverse2 += primeInfo.m_prime;
-
-    if (multInverse2i < 0)
-        multInverse2i += primeInfo.m_prime;
-
     TINT real = (intermediate.m_value0 + intermediate.m_value1) % primeInfo.m_prime;
-    real = (real * multInverse2) % primeInfo.m_prime;
+    real = (real * primeInfo.m_multInverse2) % primeInfo.m_prime;
 
     TINT imaginary = (intermediate.m_value0 - intermediate.m_value1) % primeInfo.m_prime;
-    imaginary = (imaginary * multInverse2i) % primeInfo.m_prime;
+    imaginary = (imaginary * primeInfo.m_multInverse2i) % primeInfo.m_prime;
 
     return SComplex(real, imaginary);
 
@@ -295,6 +303,7 @@ void FindPrimeWithImaginary (TINT minimum, SPrimeInfo& primeInfo)
         if (IsPrime(minimum) && HasImaginary(minimum, primeInfo.m_imaginaries))
         {
             primeInfo.m_prime = minimum;
+            primeInfo.Calculate();
             return;
         }
         ++minimum;
